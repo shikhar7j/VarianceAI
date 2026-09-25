@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -11,7 +12,8 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CHUNK_SIZE = 80
+CHUNK_SIZE_CHARS = 500
+CHUNK_OVERLAP_CHARS = 50
 MIN_SIMILARITY = 0.05
 TOP_K = 3
 
@@ -30,18 +32,19 @@ class QAResult:
         return {"answer": self.answer, "sources": self.sources, "mode": self.mode}
 
 
-def _chunk_text(text: str, max_words: int = DEFAULT_CHUNK_SIZE) -> list[str]:
-    """Split into paragraph-based chunks, further splitting oversized paragraphs."""
-    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
-    chunks: list[str] = []
-    for paragraph in paragraphs:
-        words = paragraph.split()
-        if len(words) <= max_words:
-            chunks.append(paragraph)
-        else:
-            for i in range(0, len(words), max_words):
-                chunks.append(" ".join(words[i : i + max_words]))
-    return chunks
+def _chunk_text(text: str) -> list[str]:
+    """Split into overlapping chunks using LangChain's recursive splitter.
+
+    Recursive splitting tries paragraph breaks first, then sentences, then
+    words, so chunks stay semantically coherent instead of cutting mid-thought
+    the way a naive fixed-word split would.
+    """
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=CHUNK_SIZE_CHARS,
+        chunk_overlap=CHUNK_OVERLAP_CHARS,
+        separators=["\n\n", "\n", ". ", " ", ""],
+    )
+    return [c.strip() for c in splitter.split_text(text) if c.strip()]
 
 
 class DocumentQA:
