@@ -1,0 +1,11 @@
+line_item,department,budget,actual,period
+Revenue,Sales,5000000,4650000,Q3-2026
+Cost of Goods Sold,Operations,2000000,2150000,Q3-2026
+Salaries & Wages,HR,1200000,1180000,Q3-2026
+Marketing Spend,Marketing,400000,610000,Q3-2026
+Travel & Entertainment,Sales,80000,42000,Q3-2026
+Software & IT Licenses,IT,150000,205000,Q3-2026
+Rent & Facilities,Operations,220000,220000,Q3-2026
+Professional Services,Finance,90000,135000,Q3-2026
+R&D Expenditure,Engineering,900000,870000,Q3-2026
+Utilities,Operations,60000,58500,Q3-2026
