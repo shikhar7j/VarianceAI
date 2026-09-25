@@ -30,28 +30,6 @@ The app runs fully out of the box, with no API key required.
   commentary, synthesize answers from retrieved context, and classify agent
   routing by intent instead of keywords.
 
-## Project structure
-
-```
-app/
-├── __init__.py           # Flask application factory
-├── config.py              # typed Settings, single source of env vars
-├── llm_client.py          # LangChain ChatOpenAI wrapper — only file that touches it
-├── routes.py              # HTTP layer: request/response, validation, error handling
-└── services/
-    ├── variance.py         # VarianceAnalyzer — variance calc + commentary
-    ├── qa.py                # DocumentQA — TF-IDF retrieval + optional LLM synthesis
-    └── agent.py             # FinanceAgent — LangGraph router over the two tools above
-static/
-sample_data/
-tests/
-├── test_variance.py
-├── test_qa.py
-└── test_agent.py
-run.py                       # entrypoint
-requirements.txt
-```
-
 Routes handle HTTP concerns only; services hold the actual logic and have no
 Flask dependency, so they're testable in isolation and reusable outside a web
 context (e.g. a CLI or notebook).
