@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GenAI FP&A Agent</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --border: #2a2e38;
+    --text: #e8eaed; --muted: #9aa0ac; --accent: #6ea8fe;
+    --good: #4ade80; --bad: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text); padding: 24px;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .sub { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; margin-left: 8px; vertical-align: middle;
+  }
+  .badge.fallback { background: #3a3320; color: #e8c468; }
+  .badge.live { background: #1e3a2a; color: var(--good); }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px; margin-bottom: 20px;
+  }
+  .panel h2 { font-size: 16px; margin: 0 0 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  .pct-over { color: var(--bad); font-weight: 600; }
+  .pct-under { color: var(--good); font-weight: 600; }
+  .commentary { color: var(--muted); font-size: 12.5px; max-width: 340px; }
+  #askBox { display: flex; gap: 8px; margin-bottom: 12px; }
+  input[type=text] {
+    flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: #10131a; color: var(--text); font-size: 14px;
+  }
+  button {
+    padding: 10px 16px; border-radius: 8px; border: none;
+    background: var(--accent); color: #0f1115; font-weight: 600; cursor: pointer;
+  }
+  button:hover { opacity: 0.9; }
+  #answer { font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
+  .sources { margin-top: 10px; font-size: 12px; color: var(--muted); }
+  .loading { color: var(--muted); font-size: 13px; }
+  .suggestions { margin-top: 8px; }
+  .suggestions button {
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    font-weight: 400; font-size: 12px; padding: 5px 10px; margin: 3px 4px 0 0; border-radius: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>GenAI FP&A Agent <span id="modeBadge" class="badge fallback">loading…</span></h1>
+  <div class="sub">Automated variance commentary + RAG Q&A over financial statements</div>
+
+  <div class="panel">
+    <h2>Variance Commentary — Q3 2026 Budget vs Actual</h2>
+    <div id="varianceTable" class="loading">Loading…</div>
+  </div>
+
+  <div class="panel">
+    <h2>Ask a question about the financial statement</h2>
+    <div id="askBox">
+      <input type="text" id="question" placeholder="e.g. Why did revenue miss budget this quarter?">
+      <button onclick="ask()">Ask</button>
+    </div>
+    <div class="suggestions">
+      <button onclick="askPreset('Why did revenue miss budget?')">Why did revenue miss budget?</button>
+      <button onclick="askPreset('What drove the marketing overspend?')">What drove the marketing overspend?</button>
+      <button onclick="askPreset('What are the key risks next quarter?')">Key risks next quarter?</button>
+    </div>
+    <div id="answer" style="margin-top:14px;"></div>
+  </div>
+</div>
+
+<script>
+async function loadStatus() {
+  const res = await fetch('/api/status');
+  const data = await res.json();
+  const badge = document.getElementById('modeBadge');
+  if (data.mode === 'live') {
+    badge.textContent = 'LIVE — ' + data.model;
+    badge.className = 'badge live';
+  } else {
+    badge.textContent = 'FALLBACK MODE (no API key)';
+    badge.className = 'badge fallback';
+  }
+}
+
+async function loadVariance() {
+  const res = await fetch('/api/variance');
+  const rows = await res.json();
+  let html = '<table><tr><th>Line Item</th><th>Dept</th><th>Budget</th><th>Actual</th><th>Var %</th><th>Commentary</th></tr>';
+  for (const r of rows) {
+    const cls = r.direction === 'over' ? 'pct-over' : 'pct-under';
+    html += `<tr>
+      <td>${r.line_item}</td>
+      <td>${r.department}</td>
+      <td>$${r.budget.toLocaleString()}</td>
+      <td>$${r.actual.toLocaleString()}</td>
+      <td class="${cls}">${r.variance_pct > 0 ? '+' : ''}${r.variance_pct}%</td>
+      <td class="commentary">${r.commentary}</td>
+    </tr>`;
+  }
+  html += '</table>';
+  document.getElementById('varianceTable').innerHTML = html;
+}
+
+async function ask() {
+  const q = document.getElementById('question').value.trim();
+  if (!q) return;
+  askPreset(q);
+}
+
+async function askPreset(q) {
+  document.getElementById('question').value = q;
+  const answerDiv = document.getElementById('answer');
+  answerDiv.innerHTML = '<span class="loading">Thinking…</span>';
+  const res = await fetch('/api/ask', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({question: q})
+  });
+  const data = await res.json();
+  let html = `<div>${data.answer}</div>`;
+  if (data.sources && data.sources.length) {
+    html += `<div class="sources">Sources: ${data.sources.length} matching passage(s) retrieved via TF-IDF</div>`;
+  }
+  answerDiv.innerHTML = html;
+}
+
+loadStatus();
+loadVariance();
+</script>
+</body>
+</html>
