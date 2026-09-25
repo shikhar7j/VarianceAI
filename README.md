@@ -98,47 +98,8 @@ The UI badge will flip from "FALLBACK MODE" to "LIVE — gpt-4o-mini".
 ```bash
 pytest tests/ -v
 ```
-14 unit tests cover variance direction/favorability logic, edge cases (zero
-variance, missing columns, missing files), RAG retrieval (relevant match, no
-match, empty input), and agent routing (keyword-based fallback routing to
-each tool, empty-question handling).
+10 unit tests cover variance direction/favorability logic, edge cases (zero variance, missing columns), and RAG retrieval.
 
-## Sample data
+## Using your own data
 
-- `sample_data/budget_actuals.csv` — synthetic Q3 2026 budget vs actual by
-  department/line item.
-- `sample_data/financial_statement.txt` — a synthetic quarterly financial
-  summary (fictional company) used for the RAG demo.
-
-Swap in your own CSV / statement text to demo against different data — no
-code changes needed as long as column names match.
-
-## Known limitation
-
-The fallback keyword router is intentionally simple: a question like "Why
-did revenue miss budget?" contains "budget" and gets routed to the variance
-tool, even though a human might expect the narrative explanation from the
-document instead. Live mode resolves this since the LLM classifies by
-intent, not keyword presence — a natural next step would be a slightly
-smarter fallback (e.g. weighting question words like "why"/"what" toward
-document_qa) if this needed to run well offline long-term.
-
-## Possible extensions (roadmap)
-
-- **Invoice/document extraction**: add a new service under `app/services/`
-  that runs OCR + an LLM extraction prompt over invoice images/PDFs into
-  structured JSON (vendor, amount, due date) — same pattern as `qa.py`,
-  wired up as a new tool node in the agent graph.
-- **Cloud deployment**: containerize and deploy to Azure App Service / AWS
-  Elastic Beanstalk; run with `gunicorn "app:create_app()"` in production
-  instead of the Flask dev server.
-- **Real embeddings + vector store** for larger document sets (see above).
-- **Multi-turn agent memory** using LangGraph's checkpointing, so the agent
-  can handle follow-up questions with conversational context.
-- **Auth + multi-user support** if this became a real internal tool.
-
-## Tech stack
-
-Python, Flask, pandas, scikit-learn (TF-IDF), LangChain, LangGraph, OpenAI
-API, HTML/CSS/JS, pytest. Designed to be deployable to Azure/AWS as a
-lightweight web app.
+The repo includes synthetic Q3 2026 data in the `sample_data/` folder so you can test it immediately. To test with your own files, just replace `budget_actuals.csv` and `financial_statement.txt`. No code changes are needed as long as your CSV column headers match the sample.
