@@ -1,4 +1,4 @@
-# VarianceIQ
+# VarianceAI
 
 A lightweight proof-of-concept that automates repetitive Financial Planning & Analysis (FP&A) tasks.
 
